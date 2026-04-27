@@ -23,6 +23,9 @@ int main(int argc, char **argv) {
     WINDOW *chat_win = newwin(ymax - 3, xmax, 0, 0);
     WINDOW *message_win = newwin(3, xmax, ymax - 3, 0);
     WINDOW *members_win = newwin(ymax - 3, 20, 0, xmax - 20);
+
+    keypad(message_win, TRUE); //allows arrow keys
+
     refresh();
 
     WINDOW *scroll_win = newwin(ymax-5, xmax-23, 1, 1);
@@ -44,6 +47,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
+    char previous_line[1024] = " ";
 
     fd_set read_fds;
     int max_fd = (sockfd > 0) ? sockfd : 0;
@@ -75,22 +79,61 @@ int main(int argc, char **argv) {
             // fgets(buffer, sizeof(buffer), stdin);
 
             //clearing the window again 
-            wmove(message_win, 1, 1);
-            wclrtoeol(message_win);
-            box(message_win, 0, 0);
 
-            echo();
-            mvwgetnstr(message_win, 1, 1, buffer, 1000);
-            noecho();
-            send(sockfd, buffer, strlen(buffer), 0);
+            int ch = wgetch(message_win);
 
-            wprintw(scroll_win, "you : %s\n", buffer);
-            wrefresh(scroll_win);
+            if (ch == KEY_UP) {
+                // show previous message
+                wmove(message_win, 1, 1);
+                wclrtoeol(message_win);
+                box(message_win, 0, 0);
+                wrefresh(message_win);
 
-            //cleaning up after eating like the good manners my mom taught me
-            wmove(message_win, 1, 1);
-            wclrtoeol(message_win);
-            box(message_win, 0, 0);
+                int len = strlen(previous_line);
+                for (int i = len - 1; i >= 0; i--) { //putting the previous line buffer backinto the input queue 
+                    ungetch(previous_line[i]);
+                }
+
+                //cleanly sending the prev stuff now
+                echo();
+                mvwgetnstr(message_win, 1, 1, buffer, 1000); //enter key blocking and for somereason it reads fresh from user
+                noecho();
+
+                send(sockfd, buffer, strlen(buffer), 0);
+                strncpy(previous_line, buffer, sizeof(previous_line));  //to keep the current line, history of 1 message
+
+                wprintw(scroll_win, "you : %s\n", buffer);
+                wrefresh(scroll_win);
+
+                wmove(message_win, 1, 1);
+                wclrtoeol(message_win);
+                box(message_win, 0, 0); 
+
+            }
+
+            else {
+
+                ungetch(ch); //if not arrow key then we put it back for mvwgetnstr
+                    
+                wmove(message_win, 1, 1);
+                wclrtoeol(message_win);
+                box(message_win, 0, 0);
+
+                echo();
+                mvwgetnstr(message_win, 1, 1, buffer, 1000);
+                noecho();
+                send(sockfd, buffer, strlen(buffer), 0);
+
+                strncpy(previous_line, buffer, sizeof(previous_line));
+
+                wprintw(scroll_win, "you : %s\n", buffer);
+                wrefresh(scroll_win);
+
+                //cleaning up after eating like the good manners my mom taught me
+                wmove(message_win, 1, 1);
+                wclrtoeol(message_win);
+                box(message_win, 0, 0);
+            }
         }
 
         if (FD_ISSET(sockfd, &read_fds)) {
@@ -107,7 +150,7 @@ int main(int argc, char **argv) {
             char *line = strtok(buffer, "\n");
             while (line != NULL) {
                     
-                if (strncmp(buffer, "ONLINE:", 7) == 0) {
+                if (strncmp(line, "ONLINE:", 7) == 0) {
 
                     wclear(members_win);
                     box(members_win, 0, 0);

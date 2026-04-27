@@ -180,12 +180,6 @@ int main(int argc, char **argv) {
                                     // send(j, "\n", 1, 0);  this is buggy cuz send and recv are stream s
                                 }
                             }
-                        
-                            // char first_message[100];
-                            // snprintf(first_message, sizeof(first_message), "Welcome %s!\n", c->user_name);
-                            // send(i, first_message, strlen(first_message), 0);
-
-                            //they dont need welcome because its getting buggy...
                         }
                         
                         else {
