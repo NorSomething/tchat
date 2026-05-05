@@ -19,7 +19,7 @@ struct client {
 //cleint finder
 struct client* find_client(int fd, struct client clients[], int count) {
     for (int i = 0; i < count; i++) {
-        if (clients[i].sfd == fd)
+        if (clients[i].sfd == fd && clients[i].sfd != -1) //if that client is an fd and we didnt mark it as dead
             return &clients[i];
     }
     return NULL;
@@ -151,6 +151,39 @@ int main(int argc, char **argv) {
                             //error so remove that client
                             close(i);
                             FD_CLR(i, &read_fds);
+
+                            // struct client *c = find_client(i, clients, client_count);
+                            if (c) {
+                                // Remove from list_of_connections
+                                for (int m = 0; m < loc; m++) {
+                                    if (list_of_connections[m] && strcmp(list_of_connections[m], c->user_name) == 0) {
+                                        list_of_connections[m] = NULL;
+                                        break;
+                                    }
+                                }
+                                c->sfd = -1; //mark that client as dead
+                            }
+
+                            //broadcasting the online message again
+                            char online_msg[512];
+                            snprintf(online_msg, sizeof(online_msg), "ONLINE: ");
+                            for (int k = 0; k < loc; k++) {
+                                if (list_of_connections[k] != NULL) { //all the stuff that isnt marked as null we are printing
+                                    strcat(online_msg, list_of_connections[k]);
+                                    strcat(online_msg, " ");
+                                }
+                            }
+
+                            strncat(online_msg, "\n", sizeof(online_msg) - strlen(online_msg) - 1);  //adding new line
+
+                            //sending to every client
+                            for (int j = 0; j <= max_fd; j++) {
+                                if (FD_ISSET(j, &read_fds) && j != sockfd) {
+                                    send(j, online_msg, strlen(online_msg), 0);
+                                    // send(j, "\n", 1, 0);  this is buggy cuz send and recv are stream s
+                                }
+                            }
+
                             continue;
 
                         }
@@ -166,9 +199,11 @@ int main(int argc, char **argv) {
 
                             char online_msg[512];
                             snprintf(online_msg, sizeof(online_msg), "ONLINE: ");
-                            for (int k = 0; k < loc; k++) {
-                                strcat(online_msg, list_of_connections[k]);
-                                strcat(online_msg, " ");
+                            for (int k = 0; k < loc; k++) { 
+                                if (list_of_connections[k] != NULL) { //same as before, whatver we didnt mark as null we print
+                                    strcat(online_msg, list_of_connections[k]);
+                                    strcat(online_msg, " ");
+                                }
                             }
                             
                             strncat(online_msg, "\n", sizeof(online_msg) - strlen(online_msg) - 1);  //adding new line
