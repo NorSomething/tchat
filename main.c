@@ -104,7 +104,6 @@ int main(int argc, char **argv) {
     struct client clients[100]; //for new 100 max clients
     int client_count = 0;
 
-
     //we gon multipelx on this shit
     while(1) {
 
@@ -133,10 +132,11 @@ int main(int argc, char **argv) {
 
                         //store the clients now
                         clients[client_count].sfd = new_sock_fd;
-                        strcpy(clients[client_count].user_name, "test user");
+
+			            strcpy(clients[client_count].user_name, "test user");
                         client_count++;
 
-                        send(new_sock_fd, "Enter username : ", strlen("Enter username : "), 0); 
+                        //send(new_sock_fd, "Enter username : ", strlen("Enter username : "), 0); 
 
                     }
                     

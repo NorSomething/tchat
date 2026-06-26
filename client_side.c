@@ -11,6 +11,25 @@
 
 int main(int argc, char **argv) {
 
+	//setenv("TERM", "xterm-kitty", 1); // hardcoding the term var
+
+    char *term_env = getenv("TERM");
+    if (term_env == NULL || strcmp(term_env, "unknown") == 0 || strcmp(term_env, "") == 0) {
+        setenv("TERM", "xterm-256color", 1);
+    }
+
+    char* ssh_check = getenv("SSH_TTY");
+	char* ssh_user = NULL;
+
+	if (ssh_check != NULL) {
+		ssh_user = getenv("USER");
+		if (ssh_user == NULL) 
+			ssh_user = getenv("SSH_LOGNAME");
+	}
+
+    // printf("%s\n", getenv("USER"));
+    // sleep(4);
+
     initscr();
     noecho();
     cbreak();
@@ -35,6 +54,26 @@ int main(int argc, char **argv) {
     box(chat_win, 0, 0);
     box(message_win, 0, 0);
 
+	char username_buffer[100];
+
+	// username entry if not ssh 
+	if (ssh_check == NULL) {
+		wprintw(message_win, "Enter your username : ");
+        wrefresh(message_win);
+        echo();
+		mvwgetnstr(message_win, 1, 1, username_buffer, sizeof(username_buffer));
+        noecho();
+		wrefresh(message_win);
+	}
+	else {
+		strcpy(username_buffer, ssh_user);
+	}
+
+
+    wclear(message_win);
+    box(message_win, 0, 0);
+    wrefresh(message_win);
+
     struct sockaddr_in server_addr;
 
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -46,6 +85,9 @@ int main(int argc, char **argv) {
         perror("connect error");
         exit(1);
     }
+
+    // sending the username
+    send(sockfd, username_buffer, strlen(username_buffer), 0);
 
     char previous_line[1024] = " ";
 
@@ -113,11 +155,13 @@ int main(int argc, char **argv) {
 
             else {
 
-                ungetch(ch); //if not arrow key then we put it back for mvwgetnstr
-                    
+                // moving cursor to start
                 wmove(message_win, 1, 1);
                 wclrtoeol(message_win);
                 box(message_win, 0, 0);
+                wrefresh(message_win);
+
+                ungetch(ch); //if not arrow key then we put it back for mvwgetnstr
 
                 echo();
                 mvwgetnstr(message_win, 1, 1, buffer, 1000);
@@ -133,6 +177,7 @@ int main(int argc, char **argv) {
                 wmove(message_win, 1, 1);
                 wclrtoeol(message_win);
                 box(message_win, 0, 0);
+                wrefresh(message_win);
             }
         }
 
@@ -157,7 +202,7 @@ int main(int argc, char **argv) {
                     mvwprintw(members_win, 1, 1, "%s\n", "Online : ");
                     int row = 2;
                     char copy[512];
-                    strncpy(copy, buffer+7, sizeof(copy)); //skipping the word online:
+                    strncpy(copy, line+7, sizeof(copy)); //skipping the word online:
                     copy[strcspn(copy, "\n")] = 0;
                     char *token = strtok(copy, " ");
                     while (token) {
