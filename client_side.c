@@ -11,8 +11,6 @@
 
 int main(int argc, char **argv) {
 
-	//setenv("TERM", "xterm-kitty", 1); // hardcoding the term var
-
     char *term_env = getenv("TERM");
     if (term_env == NULL || strcmp(term_env, "unknown") == 0 || strcmp(term_env, "") == 0) {
         setenv("TERM", "xterm-256color", 1);
@@ -26,9 +24,6 @@ int main(int argc, char **argv) {
 		if (ssh_user == NULL) 
 			ssh_user = getenv("SSH_LOGNAME");
 	}
-
-    // printf("%s\n", getenv("USER"));
-    // sleep(4);
 
     initscr();
     noecho();

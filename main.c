@@ -5,7 +5,6 @@
 #include<netdb.h>
 #include<arpa/inet.h>
 #include<stdio.h>
-#include<stdlib.h>
 #include<unistd.h> //for close()
 
 char *list_of_connections[100];
@@ -136,8 +135,6 @@ int main(int argc, char **argv) {
 			            strcpy(clients[client_count].user_name, "test user");
                         client_count++;
 
-                        //send(new_sock_fd, "Enter username : ", strlen("Enter username : "), 0); 
-
                     }
                     
                     else {
@@ -190,12 +187,25 @@ int main(int argc, char **argv) {
 
                         buffer[strcspn(buffer, "\n")] = 0; //removing new line if present
 
-                        //if username not assigned
+                        //if username not assigned - first message username less user enters is their username
                         if (strcmp(c->user_name, "test user") == 0) {
                             
                             strcpy(c->user_name, buffer);
 
                             list_of_connections[loc++] = c->user_name;
+
+                            //message history via file
+                            FILE *fp = fopen("chat_history.txt", "r");
+                            if (fp != NULL) {
+                                
+                                char history_buffer[2048];
+                                
+                                while(fgets(history_buffer, sizeof(history_buffer), fp) != NULL) {
+                                    send(i, history_buffer, strlen(history_buffer), 0);
+                                }
+                                fclose(fp);
+
+                            } 
 
                             char online_msg[512];
                             snprintf(online_msg, sizeof(online_msg), "ONLINE: ");
@@ -221,11 +231,19 @@ int main(int argc, char **argv) {
 
                             //i is sender, rest all -> j loop is recivier
 
+                            char reply[1024];
+                            snprintf(reply, sizeof(reply), "%s : %s\n", c->user_name, buffer);
+
+                            //appending to chat history file
+                            FILE *fp = fopen("chat_history.txt", "a");
+                            if (fp != NULL) {
+                                fputs(reply, fp);
+                                fclose(fp);
+                            }
+
                             for (int j = 0; j <= max_fd; j++) {
                                 if (FD_ISSET(j, &read_fds)) {
                                     if (j != sockfd && j != i) {
-                                        char reply[1024];
-                                        snprintf(reply, sizeof(reply), "%s : %s\n", c->user_name, buffer);
                                         send(j, reply, strlen(reply), 0);
                                     }
 

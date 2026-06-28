@@ -17,6 +17,7 @@ https://github.com/user-attachments/assets/c594b420-9b35-472b-8725-e6a4e61fc891
 - Username assignment on connect — the server broadcasts an updated online list to all clients whenever someone joins
 - Up-arrow key recalls your last sent message in the input box
 - Scrollable chat window
+- Chat history that loads up previous messages for new clients that join.
 
 ---
 
