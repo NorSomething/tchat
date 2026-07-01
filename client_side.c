@@ -9,6 +9,37 @@
 #include<ncurses.h>
 #include<unistd.h> //for close()
 
+struct room {
+	int room_id;
+	//char room_name[256]; not really needed for now (only IDs)
+};
+typedef struct room r;
+
+int create_room(r* current_room, int ymax, int xmax, WINDOW* chat_room) {
+
+	char input_buffer[256];
+
+	mvwprintw(chat_room, 1, 1, "Enter room ID  to Join or Create room : \n");
+	wrefresh(chat_room);
+
+	echo();
+	mvwgetnstr(chat_room, 1, 34, input_buffer, 1000);
+	noecho();
+
+	current_room->room_id = atoi(input_buffer);
+
+	//clearing before welcome mesg
+	wclear(chat_room);
+	mvwprintw(chat_room, 1, 1, "Welcome to the room! (ID : %d). Press any key to return...", current_room->room_id);
+	wrefresh(chat_room);
+
+	wgetch(chat_room);
+	delwin(chat_room); //delete window on keypress
+
+	return 0;
+
+}
+
 int main(int argc, char **argv) {
 
     char *term_env = getenv("TERM");
@@ -21,7 +52,7 @@ int main(int argc, char **argv) {
 
 	if (ssh_check != NULL) {
 		ssh_user = getenv("USER");
-		if (ssh_user == NULL) 
+		if (ssh_user == NULL)
 			ssh_user = getenv("SSH_LOGNAME");
 	}
 
@@ -51,7 +82,7 @@ int main(int argc, char **argv) {
 
 	char username_buffer[100];
 
-	// username entry if not ssh 
+	// username entry if not ssh
 	if (ssh_check == NULL) {
 		wprintw(message_win, "Enter your username : ");
         wrefresh(message_win);
@@ -115,7 +146,7 @@ int main(int argc, char **argv) {
             //STDIN has activity
             // fgets(buffer, sizeof(buffer), stdin);
 
-            //clearing the window again 
+            //clearing the window again
 
             int ch = wgetch(message_win);
 
@@ -127,7 +158,7 @@ int main(int argc, char **argv) {
                 wrefresh(message_win);
 
                 int len = strlen(previous_line);
-                for (int i = len - 1; i >= 0; i--) { //putting the previous line buffer backinto the input queue 
+                for (int i = len - 1; i >= 0; i--) { //putting the previous line buffer backinto the input queue
                     ungetch(previous_line[i]);
                 }
 
@@ -144,9 +175,44 @@ int main(int argc, char **argv) {
 
                 wmove(message_win, 1, 1);
                 wclrtoeol(message_win);
-                box(message_win, 0, 0); 
+                box(message_win, 0, 0);
 
             }
+
+			else if (ch == KEY_LEFT) {
+
+				r* this_room = malloc(sizeof(r));
+
+				WINDOW* new_room = newwin(ymax - 3, xmax, 0, 0);
+
+				create_room(this_room, ymax, xmax, new_room);
+                char room_id_buffer[256];
+                snprintf(room_id_buffer, sizeof(room_id_buffer), "ROOM_IDs: ");
+				char temp[10];
+				snprintf(temp, sizeof(temp), "%d", this_room->room_id);
+                strcat(room_id_buffer, temp);
+
+                wclear(scroll_win);
+                wrefresh(scroll_win);
+
+                //clearing memebers
+                wclear(members_win);
+                box(members_win, 0, 0);
+                wrefresh(members_win);
+
+				send(sockfd, room_id_buffer, strlen(room_id_buffer), 0);
+
+				free(this_room);
+
+				//redrawing main window
+				clear();
+				box(main_win, 0, 0);
+				box(chat_win, 0, 0);
+				box(message_win, 0, 0);
+				box(members_win, 0, 0);
+				refresh();
+
+			}
 
             else {
 
@@ -184,12 +250,12 @@ int main(int argc, char **argv) {
                 break;
             }
 
-            buffer[n] = '\0'; 
+            buffer[n] = '\0';
 
             //splitng on \n and getting each message
             char *line = strtok(buffer, "\n");
             while (line != NULL) {
-                    
+
                 if (strncmp(line, "ONLINE:", 7) == 0) {
 
                     wclear(members_win);
